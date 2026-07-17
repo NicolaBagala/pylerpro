@@ -5,11 +5,14 @@ class Entry:
         self.password = password 
 
     def __str__(self):
-        return """
-        Entry title: {}
-        Entry username: {}
-        Entry password: {}
-        """.format(self.title, self.username, self.password)
-
+        return (
+        f"Entry title: {self.title}\n"
+        f"Entry username: {self.username}\n"
+        f"Entry password: {self.password}"
+        )
         
-    
+    def to_dict(self):
+        return {"title": self.title, 
+                "username": self.username,
+                "password": self.password
+                }
