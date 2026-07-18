@@ -38,8 +38,11 @@ class Vault:
 
     @classmethod
     def from_dict(cls, dict):
-        # to be continued...
-        pass
+        vault = Vault(dict["name"])        
+        for v in dict["entries"].values():
+            entry = Entry.from_dict(v)
+            vault.add_entry(entry)
+        return vault             
     
     def save(self):        
         with open(f"{self.name}.json", "w") as f:            
@@ -47,7 +50,7 @@ class Vault:
     
     @classmethod
     def load(cls, file_name):
-        with open(f"{file_name}.json") as f:
-            cls.from_dict(json.load(f))
+        with open(f"{file_name}") as f:
+            return cls.from_dict(json.load(f))
 
 

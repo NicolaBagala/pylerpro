@@ -10,6 +10,14 @@ class Entry:
         f"Entry username: {self.username}\n"
         f"Entry password: {self.password}"
         )
+    
+    @classmethod
+    def from_dict(cls, dict):
+        return Entry(
+            title = dict["title"],
+            username = dict["username"],
+            password = dict["password"]
+        )
         
     def to_dict(self):
         return {"title": self.title, 
