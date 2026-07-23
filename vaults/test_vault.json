@@ -1,0 +1,15 @@
+{
+ "name": "Another test vault",
+ "entries": {
+  "Test entry": {
+   "title": "Test entry",
+   "username": "user",
+   "password": "pwd"
+  },
+  "boh": {
+   "title": "boh",
+   "username": "mah",
+   "password": "chess\u00f2"
+  }
+ }
+}

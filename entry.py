@@ -12,14 +12,20 @@ class Entry:
         )
     
     @classmethod
-    def from_dict(cls, dict):
+    def from_dict(cls, data):
+        """
+        Instantiate and populate an entry from a dictionary.
+        """
         return Entry(
-            title = dict["title"],
-            username = dict["username"],
-            password = dict["password"]
+            title = data["title"],
+            username = data["username"],
+            password = data["password"]
         )
         
     def to_dict(self):
+        """
+        Return a dictionary representation of the entry.
+        """
         return {"title": self.title, 
                 "username": self.username,
                 "password": self.password
