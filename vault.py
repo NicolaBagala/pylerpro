@@ -12,15 +12,15 @@ class Vault:
             f"Entries stored: {len(self.entries)}"
         )
 
+    
     def add_entry(self, entry):
-        def add_entry(self, entry):
-            """
-            Add an Entry to the vault.
+        """
+        Add an Entry to the vault.
 
-            Raises:
-                TypeError: if entry is not an Entry.
-                ValueError: if another entry has the same title.
-            """
+        Raises:
+            TypeError: if entry is not an Entry.
+            ValueError: if another entry has the same title.
+        """
         if not isinstance(entry, Entry): 
             raise TypeError("An object of type other than Entry was passed to add_entry. This method only accepts objects of the Entry type.")
 
@@ -42,6 +42,9 @@ class Vault:
         entry.title = new_title if new_title != "" else entry.title
         entry.username = new_username if new_username != "" else entry.username
         entry.password = new_password if new_password != "" else entry.password
+        
+        self.remove_entry(entry_title)
+        self.add_entry(entry)
 
     def get_entry(self, entry_title):
         """
@@ -85,7 +88,7 @@ class Vault:
         """
         Create and populate a vault from a dictionary.
         """
-        vault = Vault(data["name"])        
+        vault = cls(data["name"])        
         for v in data["entries"].values():
             entry = Entry.from_dict(v)
             vault.add_entry(entry)

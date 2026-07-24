@@ -7,7 +7,11 @@ current_vault = None
 
 while True: 
     prompt = f"[{current_vault.name}] > " if current_vault is not None else "[No vault loaded] > "
-    command_parts = input(prompt).split()
+    command_parts = input(prompt).split()    
+    
+    if command_parts == [] or (command_parts[0] in ["new","edit", "show", "remove", "save", "load"] and len(command_parts) == 1):
+        print("Invalid command or missing parameter. Try again.")
+        continue
         
     match command_parts[0]: 
         case "new":

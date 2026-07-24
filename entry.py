@@ -16,7 +16,7 @@ class Entry:
         """
         Instantiate and populate an entry from a dictionary.
         """
-        return Entry(
+        return cls(
             title = data["title"],
             username = data["username"],
             password = data["password"]
