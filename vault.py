@@ -1,12 +1,20 @@
 from entry import Entry
-import json 
+import json, os, encryption
 
 class Vault:
     def __init__(self, name):
+        """
+            Initialize a Vault object.
+            name is a string.
+        """
+
         self.name = name
         self.entries = {}
 
-    def __str__(self):        
+    def __str__(self):    
+        """
+            Return a pretty-printed string representation of a Vault object.
+        """    
         return (
             f"Vault name: {self.name}\n"
             f"Entries stored: {len(self.entries)}"
@@ -16,8 +24,9 @@ class Vault:
     def add_entry(self, entry):
         """
         Add an Entry to the vault.
+        entry is an Entry object.
 
-        Raises:
+        Raise:
             TypeError: if entry is not an Entry.
             ValueError: if another entry has the same title.
         """
@@ -31,6 +40,7 @@ class Vault:
     def edit_entry(self, entry_title):
         """
             Edit an entry by directly modifying its properties. 
+            entry_title is a string.
             This method is temporary, for command line testing, and likely to change later on.
         """        
         entry = self.get_entry(entry_title)
@@ -49,9 +59,10 @@ class Vault:
     def get_entry(self, entry_title):
         """
         Get an Entry from the vault.
+        entry_title is a string.
 
-        Raises:           
-            ValueError: if the entry can't be found in the vault.
+        Raise:           
+            ValueError: if the key entry_title can't be found in self.entries.
         """
         if entry_title not in self.entries:
             raise ValueError(f"Cannot retrieve entry '{entry_title}': entry not found in vault '{self.name}'.")
@@ -59,16 +70,16 @@ class Vault:
     
     def get_entries(self):
         """
-        Return a collection of all entries.
+        Return a collection of all entry objects stored in the vault.
         """
         return self.entries.values()
     
     def remove_entry(self, entry_title):
         """
-        Remove an Entry from the vault.
+        Remove an Entry with key entry_title from the vault.
 
-        Raises:           
-            ValueError: if the entry can't be found in the vault.
+        Raise:           
+            ValueError: if the key entry_title can't be found in self.entries.
         """
         if entry_title not in self.entries:
             raise ValueError(f"Cannot remove entry '{entry_title}': entry not found in vault '{self.name}'.")
@@ -87,6 +98,8 @@ class Vault:
     def from_dict(cls, data):
         """
         Create and populate a vault from a dictionary.
+        data is a dictionary representation of a vault.
+        Return a vault object.
         """
         vault = cls(data["name"])        
         for v in data["entries"].values():
@@ -94,19 +107,44 @@ class Vault:
             vault.add_entry(entry)
         return vault             
     
-    def save(self, file_path):        
+    def save(self, file_path, password):        
         """
-        Save the vault in JSON format in the project's root.
+        Save the vault as an encrypted JSON file in the given path.
+        file_path and password are strings.
         """
-        with open(f"{file_path}", "w") as f:            
-            json.dump(self.to_dict(), f, indent = 1)       
+        salt = os.urandom(16)
+        key = encryption.derive_key(password, salt)
+
+        encrypted_data, nonce = encryption.encrypt(key, json.dumps(self.to_dict(), indent = 1))
+        key = None # The key is removed from memory immediately after use for safety reasons.
+
+        sev_s = encryption.serialize_encrypted_vault(salt, nonce, encrypted_data)
+
+        with open(f"{file_path}", "wb") as f:
+            f.write(sev_s)
     
     @classmethod
-    def load(cls, file_path):
+    def load(cls, file_path, password):
         """
-        Load a vault from a JSON file.
+        Load a vault from an encrypted JSON file stored in file_path.
+        password and file_path are strings.
+        Return a decrypted vault, or None if the user aborts decryption.
+
         """
-        with open(f"{file_path}") as f:
-            return cls.from_dict(json.load(f))
+        with open(f"{file_path}", "rb") as f:
+            vault_file = f.read()
+            magic, salt, nonce, encrypted_data = encryption.deserialize_encrypted_vault(vault_file)
+
+            attempt_decrypt = True
+            if magic != encryption.FILE_MAGIC:
+                attempt_decrypt = input("Selected file doesn't appear to be a Pylerpro vault. Attempt decryption anyway? (Y/n): ") == "Y"                
+
+            if attempt_decrypt:
+                key = encryption.derive_key(password, salt)                
+                decrypted_data = encryption.decrypt(key, nonce, encrypted_data)                            
+                return cls.from_dict(json.loads(decrypted_data))
+
+            print("Decryption aborted.")
+            return None 
 
 

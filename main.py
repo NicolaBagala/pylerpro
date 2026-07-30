@@ -12,6 +12,9 @@ while True:
     if command_parts == [] or (command_parts[0] in ["new","edit", "show", "remove", "save", "load"] and len(command_parts) == 1):
         print("Invalid command or missing parameter. Try again.")
         continue
+    elif command_parts[0] in ["save", "load"] and len(command_parts) < 3:
+        print("To save or load a vault, you must provide its path a password. Try again.")
+        continue
         
     match command_parts[0]: 
         case "new":
@@ -74,15 +77,15 @@ while True:
         case "save":
             if current_vault is not None:
                 try:
-                    current_vault.save(command_parts[1])
+                    current_vault.save(command_parts[1], command_parts[2])
                     print("Vault saved successfully.")
                 except Exception as e:
                     print(e)
 
         case "load":
-            if current_vault is None:
+            if current_vault is None:                
                 try:
-                    current_vault = Vault.load(command_parts[1])
+                    current_vault = Vault.load(command_parts[1], command_parts[2])
                 except Exception as e:
                     print(e)
             else:
