@@ -1,12 +1,16 @@
 class Entry:
+    EDITABLE_FIELDS = ("title", "username", "password")
     def __init__(self, title, username, password):
         """
             Intialize an Entry object.
             title, username, and password are strings.
         """
+
         self.title = title
         self.username = username
-        self.password = password 
+        self.password = password
+
+
 
     def __str__(self):
         """

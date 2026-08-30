@@ -2,7 +2,7 @@ import os
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-FILE_MAGIC = b"PYLERPRO"
+FILE_MAGIC = b"PYLERPRO0.4"
 
 # Scrypt parameters recommended/default values
 SALT_SIZE = 16
@@ -40,11 +40,11 @@ def encrypt(key, data):
 
     aesgcm = AESGCM(key)
     encrypted_data = aesgcm.encrypt(nonce, data, None)
-    return (encrypted_data, nonce)
+    return encrypted_data, nonce
 
 def decrypt(key, nonce, encrypted_data):    
     """
-        Decrypt encrypted_data via AESGCM using the given nonce and key as an decryption key.
+        Decrypt encrypted_data via AESGCM using the given nonce and key as a decryption key.
         key is a KEY_LENGTH bytes object. nonce is a bytes object of length NONCE_SIZE. 
         encrypted_data is a bytes_object.
         Return decrypted_data in plain text string format.
@@ -52,7 +52,7 @@ def decrypt(key, nonce, encrypted_data):
 
     aesgcm = AESGCM(key)    
     decrypted_data = aesgcm.decrypt(nonce, encrypted_data, None)    
-    return decrypted_data
+    return decrypted_data.decode("utf-8")
 
 def serialize_encrypted_vault(salt, nonce, encrypted_data):    
     """
@@ -62,7 +62,7 @@ def serialize_encrypted_vault(salt, nonce, encrypted_data):
         encrypted_data is a bytes object. 
         Return the concatenated constituents.
     """
-    return(FILE_MAGIC + salt + nonce + encrypted_data)
+    return FILE_MAGIC + salt + nonce + encrypted_data
 
 
 def deserialize_encrypted_vault(vault_file):
@@ -72,19 +72,16 @@ def deserialize_encrypted_vault(vault_file):
         Return a quadruple of bytes objects extracted from vault_file (magic, salt, nonce, and encrypted_data)
     """
 
-    start_index = 0
-    end_index = len(FILE_MAGIC)    
-    magic = vault_file[start_index:end_index]
+    
+    offset = len(FILE_MAGIC)    
+    magic = vault_file[0:offset]
 
-    start_index += len(FILE_MAGIC)
-    end_index += SALT_SIZE
-    salt = vault_file[start_index:end_index]
+    salt = vault_file[offset:offset + SALT_SIZE]
+    offset += SALT_SIZE
+    
+    nonce = vault_file[offset:offset + NONCE_SIZE]
+    offset += NONCE_SIZE
 
-    start_index += SALT_SIZE
-    end_index += NONCE_SIZE
-    nonce = vault_file[start_index:end_index]
+    encrypted_data = vault_file[offset:]
 
-    start_index += NONCE_SIZE
-    encrypted_data = vault_file[start_index:]
-
-    return(magic, salt, nonce, encrypted_data)
+    return magic, salt, nonce, encrypted_data

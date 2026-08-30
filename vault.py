@@ -1,8 +1,10 @@
 from entry import Entry
+import messages as msg, exceptions as ex
 import json, os, encryption
+from cryptography.exceptions import InvalidTag
 
 class Vault:
-    def __init__(self, name):
+    def __init__(self, name, key, salt):
         """
             Initialize a Vault object.
             name is a string.
@@ -10,6 +12,9 @@ class Vault:
 
         self.name = name
         self.entries = {}
+
+        self._key = key
+        self._salt = salt
 
     def __str__(self):    
         """
@@ -31,30 +36,33 @@ class Vault:
             ValueError: if another entry has the same title.
         """
         if not isinstance(entry, Entry): 
-            raise TypeError("An object of type other than Entry was passed to add_entry. This method only accepts objects of the Entry type.")
+            raise TypeError(msg.NOT_AN_ENTRY)
 
         if entry.title in self.entries: 
-            raise ValueError(f"An entry with title '{entry.title}' already exists in vault '{self.name}'.")
+            raise ValueError(msg.ENTRY_ALREADY_EXISTS.format(entry.title, self.name))
         self.entries[entry.title] = entry
         
-    def edit_entry(self, entry_title):
+    def edit_entry(self, entry_title, entry_field, new_value):
         """
-            Edit an entry by directly modifying its properties. 
-            entry_title is a string.
-            This method is temporary, for command line testing, and likely to change later on.
-        """        
-        entry = self.get_entry(entry_title)
-        print("Specify the new values of the entry. Blank + enter to leave unchanged.")
-        new_title = input("New title: ")
-        new_username = input("New username: ")
-        new_password = input("New password: ")
+            Edit a specific property of an Entry.
+            entry_title, entry_field, and new_value are strings.
 
-        entry.title = new_title if new_title != "" else entry.title
-        entry.username = new_username if new_username != "" else entry.username
-        entry.password = new_password if new_password != "" else entry.password
+            Raise:
+                ValueError: if entry_field is not an editable entry field.
+        """        
         
-        self.remove_entry(entry_title)
-        self.add_entry(entry)
+        if entry_field not in Entry.EDITABLE_FIELDS:
+            raise ValueError(msg.INVALID_ENTRY_FIELD.format(entry_field))
+
+        entry = self.get_entry(entry_title)
+
+        # temporary shenanigan until UUID-indexing is implemented
+        if entry_field == "title":
+            del self.entries[entry.title]
+            entry.title = new_value
+            self.entries[new_value] = entry 
+        else:
+            setattr(entry, entry_field, new_value)    
 
     def get_entry(self, entry_title):
         """
@@ -65,7 +73,7 @@ class Vault:
             ValueError: if the key entry_title can't be found in self.entries.
         """
         if entry_title not in self.entries:
-            raise ValueError(f"Cannot retrieve entry '{entry_title}': entry not found in vault '{self.name}'.")
+            raise ValueError(msg.ENTRY_NOT_FOUND,format("retrieve", entry_title, self.name))
         return self.entries[entry_title]
     
     def get_entries(self):
@@ -82,7 +90,7 @@ class Vault:
             ValueError: if the key entry_title can't be found in self.entries.
         """
         if entry_title not in self.entries:
-            raise ValueError(f"Cannot remove entry '{entry_title}': entry not found in vault '{self.name}'.")
+            raise ValueError(msg.ENTRY_NOT_FOUND,format("remove", entry_title, self.name))
         del self.entries[entry_title]
 
     def to_dict(self):
@@ -95,30 +103,26 @@ class Vault:
                 }   
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data, key, salt):
         """
         Create and populate a vault from a dictionary.
         data is a dictionary representation of a vault.
         Return a vault object.
         """
-        vault = cls(data["name"])        
+        vault = cls(data["name"], key, salt)        
         for v in data["entries"].values():
             entry = Entry.from_dict(v)
             vault.add_entry(entry)
         return vault             
     
-    def save(self, file_path, password):        
+    def save(self, file_path):        
         """
         Save the vault as an encrypted JSON file in the given path.
-        file_path and password are strings.
+        file_path is a strings.
         """
-        salt = os.urandom(16)
-        key = encryption.derive_key(password, salt)
-
-        encrypted_data, nonce = encryption.encrypt(key, json.dumps(self.to_dict(), indent = 1))
-        key = None # The key is removed from memory immediately after use for safety reasons.
-
-        sev_s = encryption.serialize_encrypted_vault(salt, nonce, encrypted_data)
+        
+        encrypted_data, nonce = encryption.encrypt(self._key, json.dumps(self.to_dict(), indent = 1))        
+        sev_s = encryption.serialize_encrypted_vault(self._salt, nonce, encrypted_data)
 
         with open(f"{file_path}", "wb") as f:
             f.write(sev_s)
@@ -128,23 +132,32 @@ class Vault:
         """
         Load a vault from an encrypted JSON file stored in file_path.
         password and file_path are strings.
-        Return a decrypted vault, or None if the user aborts decryption.
+        Return a decrypted vault.
 
         """
-        with open(f"{file_path}", "rb") as f:
-            vault_file = f.read()
-            magic, salt, nonce, encrypted_data = encryption.deserialize_encrypted_vault(vault_file)
+        try:
+            with open(f"{file_path}", "rb") as f:
+                vault_file = f.read()
+                # The magic is not needed for now, but won't hurt to leave it...
+                magic, salt, nonce, encrypted_data = encryption.deserialize_encrypted_vault(vault_file)                
 
-            attempt_decrypt = True
-            if magic != encryption.FILE_MAGIC:
-                attempt_decrypt = input("Selected file doesn't appear to be a Pylerpro vault. Attempt decryption anyway? (Y/n): ") == "Y"                
-
-            if attempt_decrypt:
                 key = encryption.derive_key(password, salt)                
                 decrypted_data = encryption.decrypt(key, nonce, encrypted_data)                            
-                return cls.from_dict(json.loads(decrypted_data))
+                return cls.from_dict(json.loads(decrypted_data), key, salt)
+        except InvalidTag:
+            raise ex.FailedToLoadVault(msg.FAILED_TO_LOAD_VAULT.format(file_path))
 
-            print("Decryption aborted.")
-            return None 
+    @classmethod
+    def create(cls, vault_name, password):
+        """
+            Create a new vault.
+            Derive an encryption key from password and generate a salt.
+            vault_name and password are strings.
+        """
+
+        salt = os.urandom(encryption.SALT_SIZE)
+        key = encryption.derive_key(password, salt)
+
+        return cls(vault_name, key, salt)
 
 
