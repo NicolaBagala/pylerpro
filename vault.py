@@ -1,5 +1,5 @@
 from entry import Entry
-import messages as msg, exceptions as ex
+import messages as msg, exceptions as ex, utils
 import json, os, encryption
 from cryptography.exceptions import InvalidTag
 
@@ -58,9 +58,13 @@ class Vault:
 
         # temporary shenanigan until UUID-indexing is implemented
         if entry_field == "title":
-            del self.entries[entry.title]
-            entry.title = new_value
-            self.entries[new_value] = entry 
+
+            if new_value in self.entries and new_value != entry.title:
+                raise ValueError(msg.ENTRY_ALREADY_EXISTS.format(new_value, self.name))
+            else:
+                del self.entries[entry.title]
+                entry.title = new_value
+                self.entries[new_value] = entry 
         else:
             setattr(entry, entry_field, new_value)    
 
@@ -73,7 +77,7 @@ class Vault:
             ValueError: if the key entry_title can't be found in self.entries.
         """
         if entry_title not in self.entries:
-            raise ValueError(msg.ENTRY_NOT_FOUND,format("retrieve", entry_title, self.name))
+            raise ValueError(msg.ENTRY_NOT_FOUND.format("retrieve", entry_title, self.name))
         return self.entries[entry_title]
     
     def get_entries(self):
@@ -90,7 +94,7 @@ class Vault:
             ValueError: if the key entry_title can't be found in self.entries.
         """
         if entry_title not in self.entries:
-            raise ValueError(msg.ENTRY_NOT_FOUND,format("remove", entry_title, self.name))
+            raise ValueError(msg.ENTRY_NOT_FOUND.format("remove", entry_title, self.name))
         del self.entries[entry_title]
 
     def to_dict(self):
@@ -118,14 +122,22 @@ class Vault:
     def save(self, file_path):        
         """
         Save the vault as an encrypted JSON file in the given path.
-        file_path is a strings.
-        """
+        file_path is a string.
+        """        
         
-        encrypted_data, nonce = encryption.encrypt(self._key, json.dumps(self.to_dict(), indent = 1))        
-        sev_s = encryption.serialize_encrypted_vault(self._salt, nonce, encrypted_data)
+        vault_exists =  os.path.isfile(file_path)
+        if vault_exists: ans = utils.confirm(msg.VAULT_ALREADY_EXISTS.format(file_path))
+        proceed = not vault_exists or ans == "y"            
 
-        with open(f"{file_path}", "wb") as f:
-            f.write(sev_s)
+        if proceed:
+            encrypted_data, nonce = encryption.encrypt(self._key, json.dumps(self.to_dict(), indent = 1))        
+            sev_s = encryption.serialize_encrypted_vault(self._salt, nonce, encrypted_data)
+            
+            with open(f"{file_path}", "wb") as f:
+                f.write(sev_s)
+            utils.info(msg.VAULT_SAVED)            
+
+        
     
     @classmethod
     def load(cls, file_path, password):
@@ -146,6 +158,7 @@ class Vault:
                 return cls.from_dict(json.loads(decrypted_data), key, salt)
         except InvalidTag:
             raise ex.FailedToLoadVault(msg.FAILED_TO_LOAD_VAULT.format(file_path))
+        
 
     @classmethod
     def create(cls, vault_name, password):
@@ -154,10 +167,15 @@ class Vault:
             Derive an encryption key from password and generate a salt.
             vault_name and password are strings.
         """
-
+        
         salt = os.urandom(encryption.SALT_SIZE)
         key = encryption.derive_key(password, salt)
 
         return cls(vault_name, key, salt)
+
+    # Validation methods
+    @staticmethod
+    def vault_file_exists(file_path):
+        return os.path.isfile(file_path)
 
 

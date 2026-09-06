@@ -43,3 +43,5 @@ class Entry:
                 "username": self.username,
                 "password": self.password
                 }
+
+

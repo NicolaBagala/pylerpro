@@ -1,21 +1,31 @@
 # Generic messages
-CONTINUE_WITHOUT_SAVING = "Any unsaved data will be lost. Continue? (Y/n)"
+CONTINUE_WITHOUT_SAVING = "Any unsaved data will be lost. Continue? (y/n; default: no)"
 INVALID_COMMAND = "'{}' is not a valid command. Try again."
 INVALID_NUMBER_OF_PARAMS = "'{}' expects {}, but {} were given."
 INVALID_FLAG = "'{}' is not a valid flag for command '{}'."
 INSUFFICIENT_PARAMS_OR_FLAGS = 'This command needs at least one parameter or a flag.'
+FIELD_CANNOT_BE_EMPTY = "This field cannot be empty."
 
 # Vault messages
 NO_OPEN_VAULT = "No vault is currently open."
 EMPTY_VAULT = "The selected vault is empty."
 FAILED_TO_LOAD_VAULT = "'{}' is not a valid vault, or the password provided was incorrect."
-OPEN_VAULT_ABORT_SAVE_CONTINUE = "A vault is currently open. Save and close (s), continue without saving (c), or abort (a)?"
+OPEN_VAULT_ABORT_SAVE_CONTINUE = "A vault is currently open. Save and close (s), continue without saving (c), or abort (a; default)?"
+VAULT_ALREADY_EXISTS = "A vault already exists in location '{}'. Continue? (y/n; default: no)"
+VAULT_SAVED = "Vault saved successfully."
+PASSWORD_FOR_NEW_VAULT = "Insert password for vault '{}': "
+PASSWORD_TO_LOAD_VAULT = "Inser password to load '{}': "
+VAULT_PATH = "Path to save vault to: "
+INVALID_PATH = "'{}' is not a valid path."
+
 
 # Entry messages
 NOT_AN_ENTRY = "An object of type other than Entry was passed to add_entry. This method only accepts objects of the Entry type."
 ENTRY_ALREADY_EXISTS = "An entry with title '{}' already exists in vault '{}'."
 ENTRY_NOT_FOUND = "Cannot '{}' entry '{}': entry not found in vault '{}'."
 INVALID_ENTRY_FIELD = "'{}' is not a valid entry field."
+
+
 
 # CLI help
 COMMAND_LIST = """
@@ -33,6 +43,12 @@ Available commands
     commands: Display this list
 
 All commands are case-sensitive. Type <command> -h for command-specfic help.
+
+Default answers to confirmations can be given with any string. Example:
+
+""Any unsaved data will be lost. Continue? (y/n; default: no)"
+y or Y: yes
+n, N, any string except y or Y, or just [enter]: no
 """
 
 CLI_HELP_MSG = {

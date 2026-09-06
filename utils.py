@@ -22,7 +22,7 @@ def confirm(qstn):
         qstn is a string.
         Return a string.
     """
-    return input(qstn)
+    return input(qstn).lower()
 
 def info(msg, *args):
     """
@@ -40,8 +40,15 @@ def no_open_vault_or_continue_without_saving(current_vault):
         Return a boolean.
     """
     no_open_vault = current_vault is None     
-    continue_without_saving = False if no_open_vault else confirm(msg.CONTINUE_WITHOUT_SAVING) == "Y"
+    continue_without_saving = False if no_open_vault else confirm(msg.CONTINUE_WITHOUT_SAVING) == "y"
     
     return no_open_vault or continue_without_saving    
+
+def not_empty(value):
+    """
+        Return True if value is not empty, and false otherwise.
+    """
+    return bool(value)
+    
 
 

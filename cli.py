@@ -19,7 +19,7 @@ def parse_command(cmd_str):
         params and flags are lists, which can be empty.
     """
     cmd_parts = cmd_str.split()
-    cmd = cmd_parts[0]
+    cmd = cmd_parts[0] if len(cmd_parts) > 0 else ""
     args = cmd_parts[1:] if len(cmd_parts) > 1 else []   
 
     flags = [a for a in args if a[0] == "-"]
@@ -57,7 +57,8 @@ while True:
         cmd, params, flags = parse_command(cmd_str)
         cmd_return_value = clic.dispatch(cmd, current_vault, params, flags)
 
-        if isinstance(cmd_return_value, Vault) or cmd == "close": current_vault = cmd_return_value
+        #if isinstance(cmd_return_value, Vault) or cmd == "close": 
+        current_vault = cmd_return_value
 
     except Exception as e:        
         utils.info(str(e))

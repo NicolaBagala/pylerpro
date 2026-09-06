@@ -2,8 +2,6 @@ import utils, messages as msg
 from getpass import getpass
 from vault import Vault, Entry 
 
-
-
 def dispatch(cmd, current_vault, params, flags):
     """
         Call cmd(current_vault, params, flags) to execute the desired command, 
@@ -28,19 +26,18 @@ def new_command(current_vault, params, flags):
         Retun a Vault object. May return None if vault creation is aborted.
     """
 
-    vault_name = params[0]
-    quiet = "-q" in flags 
-    help = "-h" in flags     
+    vault_name = params[0]    
+    quiet = "-q" in flags     
     
     if not quiet and current_vault is not None:
         match utils.confirm(msg.OPEN_VAULT_ABORT_SAVE_CONTINUE):
             case "s":
-                save_command(current_vault)                
+                save_command(current_vault, None, None)                
             case "c":
                 pass
             case _:
-                return 
-    password = getpass(f"Insert password for vault '{vault_name}': ")           
+                return current_vault
+    password = validate_input(msg.PASSWORD_FOR_NEW_VAULT.format(vault_name), True)           
     return Vault.create(vault_name, password)
 
 def show_command(current_vault, params, flags):
@@ -63,7 +60,8 @@ def show_command(current_vault, params, flags):
             utils.info(msg.EMPTY_VAULT.format(current_vault))
         else:
             for e in entries:
-                print(e, "\n")        
+                print(e, "\n")    
+    return current_vault    
 
 def add_command(current_vault, params, flags):
     """
@@ -78,11 +76,12 @@ def add_command(current_vault, params, flags):
     if current_vault is None:
         utils.info(msg.NO_OPEN_VAULT)
     else:
-        title = input("Entry title: ")
-        user = input("Username: ")
-        pwd = getpass("Password: ")
+        title = validate_input("Entry title: ")
+        user = validate_input("Username: ")
+        pwd = validate_input("Password: ", True)
                     
         current_vault.add_entry(Entry(title, user, pwd))
+    return current_vault
 
 def edit_command(current_vault, params, flags):
     """
@@ -99,9 +98,11 @@ def edit_command(current_vault, params, flags):
     new_value = params[2]
 
     if current_vault is None:
-        utils.info(msg.NO_OPEN_VAULT)
+        utils.info(msg.NO_OPEN_VAULT)    
     else:
         current_vault.edit_entry(entry_title, entry_field, new_value)
+
+    return current_vault
 
 def remove_command(current_vault, params, flags):
     """
@@ -118,7 +119,8 @@ def remove_command(current_vault, params, flags):
     if current_vault is None:
         utils.inf(msg.NO_OPEN_VAULT)
     else:
-        current_vault.remove_entry(entry_title)            
+        current_vault.remove_entry(entry_title)        
+    return current_vault    
 
 def save_command(current_vault, params, flags):
     """
@@ -133,8 +135,9 @@ def save_command(current_vault, params, flags):
     if current_vault is None:
         utils.info(msg.NO_OPEN_VAULT)
     else: 
-        file_path = input("Path to save vault to: ")             
+        file_path = input(msg.VAULT_PATH)             
         current_vault.save(file_path)
+    return current_vault
 
 def load_command(current_vault, params, flags):
     """
@@ -146,21 +149,24 @@ def load_command(current_vault, params, flags):
     """
 
     file_path = params[0]
-    quiet = "-q" in flags    
+    quiet = "-q" in flags
+
+    if not Vault.vault_file_exists(file_path):
+        utils.info(msg.INVALID_PATH.format(file_path))
+        return current_vault
     
     if not quiet and current_vault is not None:
         match utils.confirm(msg.OPEN_VAULT_ABORT_SAVE_CONTINUE):
             case "s":
-                save_command(current_vault)                
+                save_command(current_vault, None, None)                
             case "c":
                 pass
             case _:
-                return  
+                return current_vault
     
-    password = getpass(f"Input password for {file_path}: ")
+    password = getpass(msg.PASSWORD_TO_LOAD_VAULT.format(file_path))
     return Vault.load(file_path, password)
     
-
 def close_command(current_vault, params, flags):
     """
         Closes a currently open vault.
@@ -180,7 +186,7 @@ def close_command(current_vault, params, flags):
         utils.info(msg.NO_OPEN_VAULT) 
         return None        
     else:
-        if quiet or utils.confirm(msg.CONTINUE_WITHOUT_SAVING) == "Y":
+        if quiet or utils.confirm(msg.CONTINUE_WITHOUT_SAVING) == "y":
             return None
 
     # If we got here, it means current_vault != None and we don't want to close it
@@ -200,6 +206,7 @@ def exit_command(current_vault, params, flags):
 
     if quiet or utils.no_open_vault_or_continue_without_saving(current_vault):
         raise SystemExit
+    return current_vault
 
 def cmds_list_command(current_vault, params, flags):
     """
@@ -211,6 +218,22 @@ def cmds_list_command(current_vault, params, flags):
         to keep the dispatch function as command-agnostic as possible.
     """
     utils.info(msg.COMMAND_LIST)
+    return current_vault
+
+def validate_input(prompt, sensitive = False):
+    """
+        Prompt the user for input using the provided prompt, and validate the input before returning it.
+        prompt is a string. sensitive is a boolean.
+
+        Return the user input if valid; if not, reject the input, inform the user, and ask again till valid.
+    """
+
+    while True:
+        value = getpass(prompt) if sensitive else input(prompt)
+        if utils.not_empty(value):
+            return value 
+        utils.info(msg.FIELD_CANNOT_BE_EMPTY)
+
 
 COMMANDS = {
     "new": new_command,
